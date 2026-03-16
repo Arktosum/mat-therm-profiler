@@ -1,0 +1,9 @@
+pyinstaller
+pyvisa
+pyvisa-py
+pyusb
+pyserial
+minimalmodbus
+matplotlib
+numpy
+Pillow
