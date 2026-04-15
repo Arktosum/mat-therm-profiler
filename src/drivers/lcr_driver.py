@@ -6,17 +6,24 @@ from src.constants import LCR_LABELS
 
 
 class LCRDriver:
-    def __init__(self, resource_str: str):
+    def __init__(self, resource_str):
         try:
             rm = pyvisa.ResourceManager()
         except OSError:
             rm = pyvisa.ResourceManager('@py')
-
+            
         self.inst = rm.open_resource(resource_str)
         self.inst.timeout = 3000
-        self.inst.write(":MEASure:VALid 0")
-        self.inst.write(":TRIGger INTernal")
-        self.inst.write(":MEASure:ITEM 255,3,0")
+        
+        # --- NEW: ADD THESE TWO LINES ---
+        self.inst.read_termination = '\n'
+        self.inst.write_termination = '\n'
+        # --------------------------------
+        self.inst.write("*RST")         # Clear the machine
+
+        self.inst.write(":MEASure:VALid 0")         # Turns OFF the annoying status byte
+        self.inst.write(":TRIGger INTernal")        
+        self.inst.write(":MEASure:ITEM 31,31,0")    # Requests our exact 10 parameters
 
     def set_frequency(self, freq: float):
         self.inst.write(f":FREQuency {freq}")

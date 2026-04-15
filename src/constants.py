@@ -3,17 +3,25 @@
 # =============================================================================
 
 # --- LCR Parameter Labels & Display ---
+# =============================================================================
+# CONSTANTS & MAPPING
+# =============================================================================
 LCR_LABELS = [
-    "Z", "Y", "Phase_Z",
-    "Cs", "Cp", "D",
-    "Ls", "Lp", "Rs", "Rp"
+    "Z", "Y", "Phase_Z", 
+    "Rs", "Rp", "Cs", 
+    "Cp", "Ls", "Lp", "D"
 ]
-LCR_UNITS = ["Ω", "S", "°", "F", "F", "", "H", "H", "Ω", "Ω"]
 
-# LCR display colors — adjusted for light theme (deeper, readable on white)
+# The corresponding scientific units
+LCR_UNITS = [
+    "Ω", "S", "°", 
+    "Ω", "Ω", "F", 
+    "F", "H", "H", ""  # D (Dissipation factor) is unitless
+]
+
 DISPLAY_COLORS = [
-    "#0077B6", "#028A0F", "#E07B00", "#C2185B", "#C2185B",
-    "#7B5EA7", "#6A0572", "#6A0572", "#B22222", "#B22222"
+    "#00FFFF", "#00FF00", "#FFA500", "#FF4500", "#FF4500", 
+    "#FF69B4", "#FF69B4", "#9370DB", "#9370DB", "#FFFF00"
 ]
 
 # --- Experiment Modes ---

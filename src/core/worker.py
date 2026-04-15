@@ -10,7 +10,8 @@ import os
 import numpy as np
 from tkinter import messagebox
 
-from src.constants import LCR_LABELS, MODE_TEMP_ONLY, MODE_FULL_SWEEP
+# ---> CHANGED: Added LCR_UNITS to your import <---
+from src.constants import LCR_LABELS, LCR_UNITS, MODE_TEMP_ONLY, MODE_FULL_SWEEP
 from src.drivers.lcr_driver import LCRDriver
 from src.drivers.eurotherm_driver import EurothermDriver
 from src.core.plotting import save_bode_plots
@@ -230,11 +231,6 @@ class ExperimentWorker(threading.Thread):
             oven = EurothermDriver(
                 self.config['oven_port'], self.config['oven_id'])
             oven.set_ramp_rate(self.config['ramp_rate'])
-            raw_readback = oven.get_ramp_rate()
-            self._write_log(
-                f"Ramp rate: sent {int(self.config['ramp_rate'])} to register 35, "
-                f"raw readback = {raw_readback}"
-            )
 
             # ── TEMP ONLY ──────────────────────────────────────────────────
             if self.mode == MODE_TEMP_ONLY:
@@ -269,9 +265,14 @@ class ExperimentWorker(threading.Thread):
                 dwell_sec = int(self.config['dwell_min'] * 60)
 
                 with open(self.csv_file, 'w', newline='', encoding='utf-8') as f:
+
+                    # ---> CHANGED: Stitching headers and units together! <---
+                    lcr_headers = [f"{lbl} ({unt})" if unt else lbl for lbl, unt in zip(
+                        LCR_LABELS, LCR_UNITS)]
+
                     csv.writer(f).writerow(
                         ["Timestamp", "Setpoint_DegC", "Actual_DegC",
-                         "Frequency_Hz"] + LCR_LABELS)
+                         "Frequency_Hz"] + lcr_headers)
 
                 prev_sp = oven.get_pv()
 
