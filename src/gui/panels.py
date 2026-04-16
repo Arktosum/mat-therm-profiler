@@ -25,47 +25,30 @@ from src.gui.styles import (
 # =============================================================================
 
 class AccordionSection:
-    """
-    A collapsible section with a header button and a content frame.
-    Click the header to expand/collapse.
-    """
-
     def __init__(self, parent, title: str, expanded: bool = True, bg=None):
         self.bg = bg or C_BG
         self.expanded = expanded
 
-        # Outer wrapper — full width
         self.wrapper = tk.Frame(parent, bg=self.bg)
         self.wrapper.pack(fill="x", pady=(6, 0))
 
-        # Header row
         hdr = tk.Frame(self.wrapper, bg=C_PANEL_ALT,
-                       highlightthickness=1,
-                       highlightbackground=C_BORDER)
+                       highlightthickness=1, highlightbackground=C_BORDER)
         hdr.pack(fill="x")
 
-        self._arrow = tk.Label(hdr,
-                               text="▾" if expanded else "▸",
-                               font=(FONT, 9), bg=C_PANEL_ALT, fg=C_TEXT_DIM,
-                               cursor="hand2")
+        self._arrow = tk.Label(hdr, text="▾" if expanded else "▸", font=(
+            FONT, 9), bg=C_PANEL_ALT, fg=C_TEXT_DIM, cursor="hand2")
         self._arrow.pack(side="left", padx=(8, 2), pady=4)
 
-        self._title_lbl = tk.Label(hdr,
-                                   text=title, font=(FONT, 8, "bold"),
-                                   bg=C_PANEL_ALT, fg=C_TEXT_MID,
-                                   cursor="hand2")
+        self._title_lbl = tk.Label(hdr, text=title, font=(
+            FONT, 8, "bold"), bg=C_PANEL_ALT, fg=C_TEXT_MID, cursor="hand2")
         self._title_lbl.pack(side="left", pady=4)
 
-        # Bind click on entire header row
         for w in (hdr, self._arrow, self._title_lbl):
             w.bind("<Button-1>", self._toggle)
 
-        # Content frame — shown or hidden
-        self.content = tk.Frame(self.wrapper,
-                                bg=C_PANEL,
-                                highlightthickness=1,
-                                highlightbackground=C_BORDER,
-                                padx=10, pady=8)
+        self.content = tk.Frame(self.wrapper, bg=C_PANEL, highlightthickness=1,
+                                highlightbackground=C_BORDER, padx=10, pady=8)
         if expanded:
             self.content.pack(fill="x")
 
@@ -91,11 +74,6 @@ class AccordionSection:
 # =============================================================================
 
 class LeftPanel:
-    """
-    Scrollable left configuration panel with accordion sections.
-    Communicates back to MainApp via callbacks (self.app.*).
-    """
-
     def __init__(self, parent: tk.Frame, app):
         self.app = app
         self.parent = parent
@@ -109,34 +87,21 @@ class LeftPanel:
         self._build_profile_buttons()
         self._build_control_buttons()
 
-    # -------------------------------------------------------------------------
-    # Scrollable canvas scaffolding
-    # -------------------------------------------------------------------------
-
     def _build_scrollable_canvas(self):
-        """
-        Wraps the panel content in a Canvas + Scrollbar so the left panel
-        scrolls when content overflows the window height.
-        """
-        # Reserve bottom strip for fixed control buttons
         self._ctrl_strip = tk.Frame(self.parent, bg=C_BG)
         self._ctrl_strip.pack(side="bottom", fill="x", padx=8, pady=(4, 8))
 
-        # Scrollable area fills the rest
         scroll_wrapper = tk.Frame(self.parent, bg=C_BG)
         scroll_wrapper.pack(side="top", fill="both", expand=True)
 
-        self._canvas = tk.Canvas(scroll_wrapper,
-                                 bg=C_BG, bd=0,
-                                 highlightthickness=0,
-                                 yscrollcommand=lambda *a: self._sb.set(*a))
-        self._sb = ttk.Scrollbar(scroll_wrapper, orient="vertical",
-                                 command=self._canvas.yview)
+        self._canvas = tk.Canvas(scroll_wrapper, bg=C_BG, bd=0,
+                                 highlightthickness=0, yscrollcommand=lambda *a: self._sb.set(*a))
+        self._sb = ttk.Scrollbar(
+            scroll_wrapper, orient="vertical", command=self._canvas.yview)
 
         self._sb.pack(side="right", fill="y")
         self._canvas.pack(side="left", fill="both", expand=True)
 
-        # Inner frame — all sections go here
         self.inner = tk.Frame(self._canvas, bg=C_BG)
         self._window_id = self._canvas.create_window(
             (0, 0), window=self.inner, anchor="nw")
@@ -144,13 +109,9 @@ class LeftPanel:
         self.inner.bind("<Configure>", self._on_frame_configure)
         self._canvas.bind("<Configure>", self._on_canvas_configure)
 
-        # Mouse wheel scroll
-        self._canvas.bind_all(
-            "<MouseWheel>",      self._on_mousewheel)   # Windows
-        self._canvas.bind_all(
-            "<Button-4>",        self._on_mousewheel)   # Linux up
-        self._canvas.bind_all(
-            "<Button-5>",        self._on_mousewheel)   # Linux down
+        self._canvas.bind_all("<MouseWheel>", self._on_mousewheel)
+        self._canvas.bind_all("<Button-4>", self._on_mousewheel)
+        self._canvas.bind_all("<Button-5>", self._on_mousewheel)
 
     def _on_frame_configure(self, event=None):
         self._canvas.configure(scrollregion=self._canvas.bbox("all"))
@@ -166,37 +127,31 @@ class LeftPanel:
         else:
             self._canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
 
-    # -------------------------------------------------------------------------
-    # Section builders  (all go inside self.inner)
-    # -------------------------------------------------------------------------
-
     def _build_device_status(self):
         sec = AccordionSection(self.inner, "DEVICE STATUS", expanded=True)
         c = sec.content
 
-        # Oven row
         oven_row = tk.Frame(c, bg=C_PANEL)
         oven_row.pack(fill="x", pady=3)
-        self.dot_oven = tk.Label(oven_row, text="●",
-                                 font=(FONT, 13), bg=C_PANEL, fg=C_TEXT_DIM)
+        self.dot_oven = tk.Label(oven_row, text="●", font=(
+            FONT, 13), bg=C_PANEL, fg=C_TEXT_DIM)
         self.dot_oven.pack(side="left", padx=(0, 6))
-        tk.Label(oven_row, text="Eurotherm (Oven)",
-                 font=F_LABEL, bg=C_PANEL, fg=C_TEXT).pack(side="left")
-        self.lbl_oven_status = tk.Label(oven_row, text="Not checked",
-                                        font=F_SMALL, bg=C_PANEL, fg=C_TEXT_DIM)
+        tk.Label(oven_row, text="Eurotherm (Oven)", font=F_LABEL,
+                 bg=C_PANEL, fg=C_TEXT).pack(side="left")
+        self.lbl_oven_status = tk.Label(
+            oven_row, text="Not checked", font=F_SMALL, bg=C_PANEL, fg=C_TEXT_DIM)
         self.lbl_oven_status.pack(side="right")
 
-        # LCR row
         lcr_row = tk.Frame(c, bg=C_PANEL)
         lcr_row.pack(fill="x", pady=3)
-        self.dot_lcr = tk.Label(lcr_row, text="●",
-                                font=(FONT, 13), bg=C_PANEL, fg=C_TEXT_DIM)
+        self.dot_lcr = tk.Label(lcr_row, text="●", font=(
+            FONT, 13), bg=C_PANEL, fg=C_TEXT_DIM)
         self.dot_lcr.pack(side="left", padx=(0, 6))
-        self.lbl_lcr_name = tk.Label(lcr_row, text="LCR Meter",
-                                     font=F_LABEL, bg=C_PANEL, fg=C_TEXT)
+        self.lbl_lcr_name = tk.Label(
+            lcr_row, text="LCR Meter", font=F_LABEL, bg=C_PANEL, fg=C_TEXT)
         self.lbl_lcr_name.pack(side="left")
-        self.lbl_lcr_status = tk.Label(lcr_row, text="Not checked",
-                                       font=F_SMALL, bg=C_PANEL, fg=C_TEXT_DIM)
+        self.lbl_lcr_status = tk.Label(
+            lcr_row, text="Not checked", font=F_SMALL, bg=C_PANEL, fg=C_TEXT_DIM)
         self.lbl_lcr_status.pack(side="right")
 
         make_divider(c, bg=C_PANEL)
@@ -211,24 +166,21 @@ class LeftPanel:
     def _build_connections(self):
         sec = AccordionSection(self.inner, "CONNECTIONS", expanded=True)
         c = sec.content
-        self.cmb_lcr = make_dropdown_row(c, "LCR Address",   bg=C_PANEL)
-        self.cmb_oven = make_dropdown_row(c, "Oven Port",     bg=C_PANEL)
-        self.ent_oven_id = make_entry_row(
-            c,   "Oven Modbus ID", "1", bg=C_PANEL)
+        self.cmb_lcr = make_dropdown_row(c, "LCR Address", bg=C_PANEL)
+        self.cmb_oven = make_dropdown_row(c, "Oven Port", bg=C_PANEL)
+        self.ent_oven_id = make_entry_row(c, "Oven Modbus ID", "1", bg=C_PANEL)
 
     def _build_temp_profile(self):
         sec = AccordionSection(
             self.inner, "TEMPERATURE PROFILE", expanded=True)
         c = sec.content
-        self.ent_start = make_entry_row(
-            c, "Start Temp (°C)", "30",  bg=C_PANEL)
-        self.ent_end = make_entry_row(c, "End Temp (°C)",   "100", bg=C_PANEL)
+        self.ent_start = make_entry_row(c, "Start Temp (°C)", "30", bg=C_PANEL)
+        self.ent_end = make_entry_row(c, "End Temp (°C)", "100", bg=C_PANEL)
         self.ent_tolerance = make_entry_row(
-            c, "Tolerance (°C)",  "1.0", bg=C_PANEL)
+            c, "Tolerance (°C)", "1.0", bg=C_PANEL)
         self.ent_ramp_rate = make_entry_row(
-            c, "Ramp (°C/min)",  "6.0", bg=C_PANEL)
+            c, "Ramp (°C/min)", "6.0", bg=C_PANEL)
 
-        # Step + Dwell — only relevant in Full Sweep mode, stored for show/hide
         self._step_frame = tk.Frame(c, bg=C_PANEL)
         self._step_frame.pack(fill="x")
         self.ent_step = make_entry_row(
@@ -240,22 +192,26 @@ class LeftPanel:
             self._dwell_frame, "Dwell (min)", "2", bg=C_PANEL)
 
     def _build_lcr_section(self):
-        """LCR/Frequency accordion — shown/hidden by mode."""
         self._lcr_section = AccordionSection(
             self.inner, "FREQUENCY SWEEP", expanded=True)
         c = self._lcr_section.content
 
-        self.ent_min = make_entry_row(c, "Min Freq (Hz)",  "100",    bg=C_PANEL,
-                                      on_key_release=self.app.recalc_stats)
-        self.ent_max = make_entry_row(c, "Max Freq (Hz)",  "100000", bg=C_PANEL,
-                                      on_key_release=self.app.recalc_stats)
-        self.ent_steps = make_entry_row(c, "Steps/Decade",   "5",      bg=C_PANEL,
-                                        on_key_release=self.app.recalc_stats)
+        self.ent_min = make_entry_row(
+            c, "Min Freq (Hz)", "100", bg=C_PANEL, on_key_release=self.app.recalc_stats)
+        self.ent_max = make_entry_row(
+            c, "Max Freq (Hz)", "100000", bg=C_PANEL, on_key_release=self.app.recalc_stats)
+        self.ent_steps = make_entry_row(
+            c, "Steps/Decade", "5", bg=C_PANEL, on_key_release=self.app.recalc_stats)
         self.ent_voltage = make_entry_row(
-            c, "AC Voltage (V)", "1.0",    bg=C_PANEL)
+            c, "AC Voltage (V)", "1.0", bg=C_PANEL)
 
-        self.lbl_stats = tk.Label(c, text="",
-                                  font=F_SMALL, bg=C_PANEL, fg=C_ACCENT)
+        # --- NEW: Manual Sweep Button ---
+        self.btn_manual = ttk.Button(
+            c, text="▶ Run Single Sweep (Manual)", command=self.app.start_manual_sweep)
+        self.btn_manual.pack(fill="x", pady=(8, 0), padx=2)
+
+        self.lbl_stats = tk.Label(
+            c, text="", font=F_SMALL, bg=C_PANEL, fg=C_ACCENT)
         self.lbl_stats.pack(anchor="e", pady=(4, 0))
 
     def _build_output_file(self):
@@ -264,14 +220,8 @@ class LeftPanel:
 
         file_row = tk.Frame(c, bg=C_PANEL)
         file_row.pack(fill="x")
-        self.ent_filename = tk.Entry(file_row,
-                                     font=(FONT, 8), width=20,
-                                     bg=C_PANEL, fg=C_TEXT,
-                                     insertbackground=C_ACCENT,
-                                     relief="solid", bd=1,
-                                     highlightthickness=1,
-                                     highlightcolor=C_ACCENT,
-                                     highlightbackground=C_BORDER)
+        self.ent_filename = tk.Entry(file_row, font=(FONT, 8), width=20, bg=C_PANEL, fg=C_TEXT, insertbackground=C_ACCENT,
+                                     relief="solid", bd=1, highlightthickness=1, highlightcolor=C_ACCENT, highlightbackground=C_BORDER)
         self.ent_filename.insert(0, os.path.join(os.getcwd(), "data.csv"))
         self.ent_filename.pack(side="left", fill="x", expand=True)
         ttk.Button(file_row, text="…", style="Action.TButton",
@@ -288,32 +238,16 @@ class LeftPanel:
                            self.app.load_profile, side="right")
 
     def _build_control_buttons(self):
-        """Fixed bottom strip — always visible, never scrolls away."""
         c = self._ctrl_strip
-
-        # Thin top border
         tk.Frame(c, bg=C_BORDER, height=1).pack(fill="x", pady=(0, 8))
 
-        self.btn_start = ttk.Button(c,
-                                    text="▶   START EXPERIMENT",
-                                    style="Start.TButton",
-                                    command=self.app.start_experiment)
+        self.btn_start = ttk.Button(
+            c, text="▶   START EXPERIMENT", style="Start.TButton", command=self.app.start_experiment)
         self.btn_start.pack(fill="x", pady=(0, 4))
 
-        self.btn_stop = tk.Button(c,
-                                  text="⏹   E-STOP",
-                                  bg=C_STOP_BG, fg=C_STOP_FG,
-                                  font=(FONT, 10, "bold"),
-                                  relief="solid", bd=1,
-                                  activebackground="#FECACA",
-                                  activeforeground=C_STOP_FG,
-                                  command=self.app.stop_experiment,
-                                  state="disabled")
+        self.btn_stop = tk.Button(c, text="⏹   E-STOP", bg=C_STOP_BG, fg=C_STOP_FG, font=(FONT, 10, "bold"), relief="solid",
+                                  bd=1, activebackground="#FECACA", activeforeground=C_STOP_FG, command=self.app.stop_experiment, state="disabled")
         self.btn_stop.pack(fill="x")
-
-    # -------------------------------------------------------------------------
-    # Mode visibility
-    # -------------------------------------------------------------------------
 
     def show_lcr_section(self):
         self._lcr_section.wrapper.pack(fill="x", pady=(6, 0))
@@ -359,12 +293,9 @@ class LeftPanel:
             self.dot_lcr.config(fg=color)
             self.lbl_lcr_status.config(text=text, fg=color)
 
-    # -------------------------------------------------------------------------
-
     def _browse_file(self):
         f = filedialog.asksaveasfilename(
-            defaultextension=".csv",
-            filetypes=[("CSV", "*.csv")])
+            defaultextension=".csv", filetypes=[("CSV", "*.csv")])
         if f:
             self.ent_filename.delete(0, tk.END)
             self.ent_filename.insert(0, f)

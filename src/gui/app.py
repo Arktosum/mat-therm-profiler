@@ -24,20 +24,18 @@ from src.gui.dashboard import Dashboard
 from src.core.worker import ExperimentWorker
 from src.drivers.lcr_driver import LCRDriver
 from src.drivers.eurotherm_driver import EurothermDriver
+import sys
 
+def resource_path(relative_path):
+    """ Get absolute path to resource, works for dev and for PyInstaller """
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
 
 class MainApp:
-    """
-    Top-level application class.
-
-    Responsibilities:
-      - Build the chrome (top bar, body split)
-      - Instantiate LeftPanel and Dashboard
-      - Own experiment state (mode, plot data arrays, worker thread)
-      - Route worker callbacks to Dashboard update methods
-      - Handle mode switching, profile save/load, connection testing
-    """
-
     def __init__(self, root: tk.Tk):
         self.root = root
         self.root.title("MatTherm Profiler  //  v2.0")
@@ -45,90 +43,62 @@ class MainApp:
         self.root.configure(bg=C_BG)
         self.root.resizable(True, True)
         try:
-            self.root.iconbitmap(os.path.join("assets", "wee.ico"))
+            # --- FIXED: Now resolves correctly inside the .exe ---
+            self.root.iconbitmap(resource_path(os.path.join("assets", "wee.ico")))
         except Exception:
             pass
 
         make_light_style()
 
-        # --- State ---
         self.mode = MODE_TEMP_ONLY
         self.worker = None
-        self.status_oven = None   # None=unchecked, True=ok, False=fail
+        self.status_oven = None
         self.status_lcr = None
 
-        # Plot data arrays (owned here, passed to Dashboard.update_plot)
-        self.time_data = []
-        self.pv_data = []
-        self.sp_data = []
-        self.wsp_data = []
+        self.time_data, self.pv_data, self.sp_data, self.wsp_data = [], [], [], []
 
         self._build_chrome()
         self.refresh_resources()
         self.recalc_stats()
         self.set_mode(MODE_TEMP_ONLY)
 
-    # -------------------------------------------------------------------------
-    # Chrome (top bar + body split)
-    # -------------------------------------------------------------------------
-
     def _build_chrome(self):
-        # Top bar — light, clean
-        top_bar = tk.Frame(self.root, bg=C_PANEL,
-                           highlightthickness=1,
-                           highlightbackground=C_BORDER,
-                           height=48)
+        top_bar = tk.Frame(self.root, bg=C_PANEL, highlightthickness=1,
+                           highlightbackground=C_BORDER, height=48)
         top_bar.pack(fill="x", side="top")
         top_bar.pack_propagate(False)
 
-        tk.Label(top_bar,
-                 text="MatTherm Profiler",
-                 font=(FONT, 13, "bold"),
-                 bg=C_PANEL, fg=C_TEXT
-                 ).pack(side="left", padx=16, pady=10)
+        tk.Label(top_bar, text="MatTherm Profiler", font=(FONT, 13, "bold"),
+                 bg=C_PANEL, fg=C_TEXT).pack(side="left", padx=16, pady=10)
 
-        # Mode toggle (top bar right)
         mode_frame = tk.Frame(top_bar, bg=C_PANEL)
         mode_frame.pack(side="right", padx=16)
-        tk.Label(mode_frame, text="Mode:",
-                 font=(FONT, 8),
-                 bg=C_PANEL, fg=C_TEXT_DIM).pack(side="left", padx=(0, 6))
+        tk.Label(mode_frame, text="Mode:", font=(FONT, 8), bg=C_PANEL,
+                 fg=C_TEXT_DIM).pack(side="left", padx=(0, 6))
 
-        self.btn_mode_temp = ttk.Button(mode_frame,
-                                        text="🌡  Temp Only",
-                                        style="ModeA.TButton",
-                                        command=lambda: self.set_mode(MODE_TEMP_ONLY))
+        self.btn_mode_temp = ttk.Button(
+            mode_frame, text="🌡  Temp Only", style="ModeA.TButton", command=lambda: self.set_mode(MODE_TEMP_ONLY))
         self.btn_mode_temp.pack(side="left", padx=2)
 
-        self.btn_mode_full = ttk.Button(mode_frame,
-                                        text="⚡  Full Sweep",
-                                        style="ModeInactive.TButton",
-                                        command=lambda: self.set_mode(MODE_FULL_SWEEP))
+        self.btn_mode_full = ttk.Button(
+            mode_frame, text="⚡  Full Sweep", style="ModeInactive.TButton", command=lambda: self.set_mode(MODE_FULL_SWEEP))
         self.btn_mode_full.pack(side="left", padx=2)
 
-        # Body
         body = tk.Frame(self.root, bg=C_BG)
         body.pack(fill="both", expand=True)
 
-        # Left panel container
         left_container = tk.Frame(body, bg=C_BG, width=310)
         left_container.pack(side="left", fill="y", padx=(8, 4), pady=8)
         left_container.pack_propagate(False)
         self.panel = LeftPanel(left_container, self)
 
-        # Right dashboard container
         right_container = tk.Frame(body, bg=C_BG)
-        right_container.pack(side="right", fill="both", expand=True,
-                             padx=(4, 8), pady=8)
+        right_container.pack(side="right", fill="both",
+                             expand=True, padx=(4, 8), pady=8)
         self.dash = Dashboard(right_container)
-
-    # -------------------------------------------------------------------------
-    # Mode switching
-    # -------------------------------------------------------------------------
 
     def set_mode(self, mode: str):
         self.mode = mode
-
         if mode == MODE_TEMP_ONLY:
             self.btn_mode_temp.configure(style="ModeA.TButton")
             self.btn_mode_full.configure(style="ModeInactive.TButton")
@@ -136,7 +106,6 @@ class MainApp:
             self.panel.hide_step_dwell()
             self.dash.hide_lcr_panel()
             self.panel.set_lcr_status_unused()
-
         elif mode == MODE_FULL_SWEEP:
             self.btn_mode_full.configure(style="ModeB.TButton")
             self.btn_mode_temp.configure(style="ModeInactive.TButton")
@@ -144,12 +113,7 @@ class MainApp:
             self.panel.show_step_dwell()
             self.dash.show_lcr_panel()
             self.panel.restore_lcr_status(self.status_lcr)
-
         self.recalc_stats()
-
-    # -------------------------------------------------------------------------
-    # Connection helpers
-    # -------------------------------------------------------------------------
 
     def refresh_resources(self):
         try:
@@ -169,13 +133,10 @@ class MainApp:
             pass
 
     def test_connections(self):
-        """Ping both instruments in a background thread; update status dots."""
         def _test():
-            # Oven
             try:
-                drv = EurothermDriver(
-                    self.panel.cmb_oven.get(),
-                    int(self.panel.ent_oven_id.get()))
+                drv = EurothermDriver(self.panel.cmb_oven.get(), int(
+                    self.panel.ent_oven_id.get()))
                 pv = drv.get_pv()
                 self.status_oven = True
                 self.root.after(0, lambda: self.panel.set_device_status(
@@ -187,7 +148,6 @@ class MainApp:
                     0, lambda: self.panel.set_device_status("oven", False))
                 self.log_msg(f"Oven FAILED: {e}")
 
-            # LCR (only relevant in Full Sweep)
             if self.mode == MODE_FULL_SWEEP:
                 try:
                     drv = LCRDriver(self.panel.cmb_lcr.get())
@@ -206,44 +166,27 @@ class MainApp:
         threading.Thread(target=_test, daemon=True).start()
         self.log_msg("Testing connections...")
 
-    # -------------------------------------------------------------------------
-    # Stats recalculation
-    # -------------------------------------------------------------------------
-
     def recalc_stats(self, event=None):
         if self.mode == MODE_TEMP_ONLY:
             self.panel.lbl_stats.config(text="")
             return
         try:
-            mn = float(self.panel.ent_min.get())
-            mx = float(self.panel.ent_max.get())
-            st = float(self.panel.ent_steps.get())
+            mn, mx, st = float(self.panel.ent_min.get()), float(
+                self.panel.ent_max.get()), float(self.panel.ent_steps.get())
             total = int(math.log10(mx / mn) * st) + 1
             self.panel.lbl_stats.config(text=f"Total points/step: {total}")
         except Exception:
             pass
 
-    # -------------------------------------------------------------------------
-    # Profile save / load
-    # -------------------------------------------------------------------------
-
     def save_profile(self):
         data = {
-            "mode":    self.mode,
-            "start":   self.panel.ent_start.get(),
-            "end":     self.panel.ent_end.get(),
-            "step":    self.panel.ent_step.get(),
-            "tol":     self.panel.ent_tolerance.get(),
-            "dwell":   self.panel.ent_dwell.get(),
-            "ramp":    self.panel.ent_ramp_rate.get(),
-            "f_min":   self.panel.ent_min.get(),
-            "f_max":   self.panel.ent_max.get(),
-            "f_steps": self.panel.ent_steps.get(),
-            "ac_v":    self.panel.ent_voltage.get(),
+            "mode":    self.mode, "start":   self.panel.ent_start.get(), "end":     self.panel.ent_end.get(),
+            "step":    self.panel.ent_step.get(), "tol":     self.panel.ent_tolerance.get(), "dwell":   self.panel.ent_dwell.get(),
+            "ramp":    self.panel.ent_ramp_rate.get(), "f_min":   self.panel.ent_min.get(), "f_max":   self.panel.ent_max.get(),
+            "f_steps": self.panel.ent_steps.get(), "ac_v":    self.panel.ent_voltage.get(),
         }
         f = filedialog.asksaveasfilename(
-            defaultextension=".json",
-            filetypes=[("Profile", "*.json")])
+            defaultextension=".json", filetypes=[("Profile", "*.json")])
         if f:
             with open(f, 'w') as jf:
                 json.dump(data, jf, indent=2)
@@ -255,35 +198,28 @@ class MainApp:
             return
         with open(f, 'r') as jf:
             data = json.load(jf)
-
         field_map = {
-            "start":   self.panel.ent_start,
-            "end":     self.panel.ent_end,
-            "step":    self.panel.ent_step,
-            "tol":     self.panel.ent_tolerance,
-            "dwell":   self.panel.ent_dwell,
-            "ramp":    self.panel.ent_ramp_rate,
-            "f_min":   self.panel.ent_min,
-            "f_max":   self.panel.ent_max,
-            "f_steps": self.panel.ent_steps,
-            "ac_v":    self.panel.ent_voltage,
+            "start": self.panel.ent_start, "end": self.panel.ent_end, "step": self.panel.ent_step,
+            "tol": self.panel.ent_tolerance, "dwell": self.panel.ent_dwell, "ramp": self.panel.ent_ramp_rate,
+            "f_min": self.panel.ent_min, "f_max": self.panel.ent_max, "f_steps": self.panel.ent_steps, "ac_v": self.panel.ent_voltage,
         }
         for key, ent in field_map.items():
             if key in data:
                 ent.delete(0, tk.END)
                 ent.insert(0, data[key])
-
         if "mode" in data:
             self.set_mode(data["mode"])
-
         self.recalc_stats()
         self.log_msg(f"Profile loaded: {os.path.basename(f)}")
 
-    # -------------------------------------------------------------------------
-    # Experiment control
-    # -------------------------------------------------------------------------
+    # --- NEW: Manual Sweep Routing ---
+    def start_manual_sweep(self):
+        self._start_worker(manual_mode=True)
 
     def start_experiment(self):
+        self._start_worker(manual_mode=False)
+
+    def _start_worker(self, manual_mode: bool):
         config = {
             'lcr_addr':         self.panel.cmb_lcr.get(),
             'oven_port':        self.panel.cmb_oven.get(),
@@ -299,17 +235,18 @@ class MainApp:
             'steps_per_decade': int(self.panel.ent_steps.get()) if self.mode == MODE_FULL_SWEEP else 5,
             'ac_voltage':       float(self.panel.ent_voltage.get()) if self.mode == MODE_FULL_SWEEP else 1.0,
             'filename':         self.panel.ent_filename.get(),
+            'manual_mode':      manual_mode
         }
 
         self.panel.btn_start.config(state="disabled")
+        if hasattr(self.panel, 'btn_manual'):
+            self.panel.btn_manual.config(state="disabled")
         self.panel.btn_stop.config(state="normal")
 
         self.time_data, self.pv_data, self.sp_data, self.wsp_data = [], [], [], []
-        self._ghost_drawn = False   # will be drawn on first plot callback
-        self._ghost_config = (
-            config['end_temp'],
-            round(config['ramp_rate'])
-        ) if self.mode == MODE_TEMP_ONLY else None
+        self._ghost_drawn = False
+        self._ghost_config = (config['end_temp'], round(
+            config['ramp_rate'])) if self.mode == MODE_TEMP_ONLY else None
 
         self.dash.clear_plot()
 
@@ -323,20 +260,17 @@ class MainApp:
             callback_finished=self._cb_finished,
         )
         self.worker.start()
-        self.log_msg(f"Experiment started — Mode: "
-                     f"{'Temp Only' if self.mode == MODE_TEMP_ONLY else 'Full Sweep'}")
+
+        mode_str = "Manual Sweep" if manual_mode else (
+            'Temp Only' if self.mode == MODE_TEMP_ONLY else 'Full Sweep')
+        self.log_msg(f"Experiment started — Mode: {mode_str}")
 
     def stop_experiment(self):
         if self.worker:
             self.worker.stop(cooldown=True)
         self.log_msg("E-STOP issued — cooldown to 25°C")
 
-    # -------------------------------------------------------------------------
-    # Worker callbacks  (called from background thread → safe via after())
-    # -------------------------------------------------------------------------
-
     def _cb_progress(self, status_text: str, rem_sec: float, pv: float, sp: float):
-        # wsp is updated separately via _cb_live_plot; use last known value
         wsp = self.wsp_data[-1] if self.wsp_data else 0.0
         self.root.after(0, lambda: self.dash.update_readouts(
             pv, sp, wsp, rem_sec, status_text))
@@ -347,7 +281,6 @@ class MainApp:
         self.sp_data.append(sp)
         self.wsp_data.append(wsp)
 
-        # Draw ghost ramp on first data point — anchored to real PV + real elapsed time
         if not self._ghost_drawn and self._ghost_config is not None:
             end_temp, rate = self._ghost_config
             self.root.after(0, lambda: self.dash.draw_ghost_ramp(
@@ -366,12 +299,10 @@ class MainApp:
 
     def _on_finish(self):
         self.panel.btn_start.config(state="normal")
+        if hasattr(self.panel, 'btn_manual'):
+            self.panel.btn_manual.config(state="normal")
         self.panel.btn_stop.config(state="disabled")
         self.dash.set_status("Finished", C_ACCENT)
-
-    # -------------------------------------------------------------------------
-    # Logging
-    # -------------------------------------------------------------------------
 
     def log_msg(self, msg: str):
         ts = datetime.datetime.now().strftime("%H:%M:%S")
