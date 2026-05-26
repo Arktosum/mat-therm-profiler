@@ -8,6 +8,7 @@ import datetime
 import json
 import math
 import os
+import sys
 
 import pyvisa
 import serial.tools.list_ports
@@ -24,16 +25,16 @@ from src.gui.dashboard import Dashboard
 from src.core.worker import ExperimentWorker
 from src.drivers.lcr_driver import LCRDriver
 from src.drivers.eurotherm_driver import EurothermDriver
-import sys
+
 
 def resource_path(relative_path):
     """ Get absolute path to resource, works for dev and for PyInstaller """
     try:
-        # PyInstaller creates a temp folder and stores path in _MEIPASS
         base_path = sys._MEIPASS
     except Exception:
         base_path = os.path.abspath(".")
     return os.path.join(base_path, relative_path)
+
 
 class MainApp:
     def __init__(self, root: tk.Tk):
@@ -43,8 +44,8 @@ class MainApp:
         self.root.configure(bg=C_BG)
         self.root.resizable(True, True)
         try:
-            # --- FIXED: Now resolves correctly inside the .exe ---
-            self.root.iconbitmap(resource_path(os.path.join("assets", "wee.ico")))
+            self.root.iconbitmap(resource_path(
+                os.path.join("assets", "wee.ico")))
         except Exception:
             pass
 
@@ -184,6 +185,13 @@ class MainApp:
             "step":    self.panel.ent_step.get(), "tol":     self.panel.ent_tolerance.get(), "dwell":   self.panel.ent_dwell.get(),
             "ramp":    self.panel.ent_ramp_rate.get(), "f_min":   self.panel.ent_min.get(), "f_max":   self.panel.ent_max.get(),
             "f_steps": self.panel.ent_steps.get(), "ac_v":    self.panel.ent_voltage.get(),
+
+            # --- Adv LCR Settings ---
+            "speed":   self.panel.cmb_speed.get(), "avg":     self.panel.ent_avg.get(), "delay":   self.panel.ent_delay.get(),
+            "range":   self.panel.cmb_range.get(), "lowz":    self.panel.cmb_lowz.get(), "dcbias":  self.panel.ent_dcbias.get(),
+            "cable":   self.panel.cmb_cable.get(), "open":    self.panel.cmb_open.get(), "short":   self.panel.cmb_short.get(),
+            "load":    self.panel.cmb_load.get(),  "sync":    self.panel.cmb_sync.get(), "jsync":   self.panel.cmb_jsync.get(),
+            "judge":   self.panel.cmb_judge.get(), "limit":   self.panel.cmb_limit.get(), "scale":   self.panel.cmb_scale.get(),
         }
         f = filedialog.asksaveasfilename(
             defaultextension=".json", filetypes=[("Profile", "*.json")])
@@ -198,21 +206,36 @@ class MainApp:
             return
         with open(f, 'r') as jf:
             data = json.load(jf)
+
+        # Load standard entries
         field_map = {
             "start": self.panel.ent_start, "end": self.panel.ent_end, "step": self.panel.ent_step,
             "tol": self.panel.ent_tolerance, "dwell": self.panel.ent_dwell, "ramp": self.panel.ent_ramp_rate,
-            "f_min": self.panel.ent_min, "f_max": self.panel.ent_max, "f_steps": self.panel.ent_steps, "ac_v": self.panel.ent_voltage,
+            "f_min": self.panel.ent_min, "f_max": self.panel.ent_max, "f_steps": self.panel.ent_steps,
+            "ac_v": self.panel.ent_voltage, "avg": self.panel.ent_avg, "delay": self.panel.ent_delay,
+            "dcbias": self.panel.ent_dcbias
         }
         for key, ent in field_map.items():
             if key in data:
                 ent.delete(0, tk.END)
                 ent.insert(0, data[key])
+
+        # Load Comboboxes
+        combo_map = {
+            "speed": self.panel.cmb_speed, "range": self.panel.cmb_range, "lowz": self.panel.cmb_lowz,
+            "cable": self.panel.cmb_cable, "open": self.panel.cmb_open, "short": self.panel.cmb_short,
+            "load": self.panel.cmb_load, "sync": self.panel.cmb_sync, "jsync": self.panel.cmb_jsync,
+            "judge": self.panel.cmb_judge, "limit": self.panel.cmb_limit, "scale": self.panel.cmb_scale
+        }
+        for key, cmb in combo_map.items():
+            if key in data:
+                cmb.set(data[key])
+
         if "mode" in data:
             self.set_mode(data["mode"])
         self.recalc_stats()
         self.log_msg(f"Profile loaded: {os.path.basename(f)}")
 
-    # --- NEW: Manual Sweep Routing ---
     def start_manual_sweep(self):
         self._start_worker(manual_mode=True)
 
@@ -235,7 +258,17 @@ class MainApp:
             'steps_per_decade': int(self.panel.ent_steps.get()) if self.mode == MODE_FULL_SWEEP else 5,
             'ac_voltage':       float(self.panel.ent_voltage.get()) if self.mode == MODE_FULL_SWEEP else 1.0,
             'filename':         self.panel.ent_filename.get(),
-            'manual_mode':      manual_mode
+            'manual_mode':      manual_mode,
+
+            # --- Adv Settings ---
+            'adv_speed':  self.panel.cmb_speed.get(), 'adv_avg':    self.panel.ent_avg.get(),
+            'adv_delay':  self.panel.ent_delay.get(), 'adv_range':  self.panel.cmb_range.get(),
+            'adv_lowz':   self.panel.cmb_lowz.get(),  'adv_dcbias': self.panel.ent_dcbias.get(),
+            'adv_cable':  self.panel.cmb_cable.get(), 'adv_open':   self.panel.cmb_open.get(),
+            'adv_short':  self.panel.cmb_short.get(), 'adv_load':   self.panel.cmb_load.get(),
+            'adv_sync':   self.panel.cmb_sync.get(),  'adv_jsync':  self.panel.cmb_jsync.get(),
+            'adv_judge':  self.panel.cmb_judge.get(), 'adv_limit':  self.panel.cmb_limit.get(),
+            'adv_scale':  self.panel.cmb_scale.get(),
         }
 
         self.panel.btn_start.config(state="disabled")

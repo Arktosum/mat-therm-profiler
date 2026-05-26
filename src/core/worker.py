@@ -178,8 +178,8 @@ class ExperimentWorker(threading.Thread):
             if is_manual:
                 lcr = LCRDriver(self.config['lcr_addr'])
                 lcr.set_voltage(self.config['ac_voltage'])
-                self._write_log(
-                    f"LCR voltage set to {self.config['ac_voltage']} V")
+                lcr.apply_advanced_settings(self.config, self._write_log) 
+                self._write_log(f"LCR voltage set to {self.config['ac_voltage']} V")
 
                 curr_sp = oven.get_sp()
                 curr_pv = oven.get_pv()
@@ -226,8 +226,8 @@ class ExperimentWorker(threading.Thread):
                 elif self.mode == MODE_FULL_SWEEP:
                     lcr = LCRDriver(self.config['lcr_addr'])
                     lcr.set_voltage(self.config['ac_voltage'])
-                    self._write_log(
-                        f"LCR voltage set to {self.config['ac_voltage']} V")
+                    lcr.apply_advanced_settings(self.config, self._write_log)
+                    self._write_log(f"LCR voltage set to {self.config['ac_voltage']} V")
 
                     log_min, log_max = np.log10(
                         self.config['min_freq']), np.log10(self.config['max_freq'])

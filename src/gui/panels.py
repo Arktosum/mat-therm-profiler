@@ -20,10 +20,6 @@ from src.gui.styles import (
 )
 
 
-# =============================================================================
-# Accordion section widget
-# =============================================================================
-
 class AccordionSection:
     def __init__(self, parent, title: str, expanded: bool = True, bg=None):
         self.bg = bg or C_BG
@@ -69,10 +65,6 @@ class AccordionSection:
             self._toggle()
 
 
-# =============================================================================
-# LeftPanel
-# =============================================================================
-
 class LeftPanel:
     def __init__(self, parent: tk.Frame, app):
         self.app = app
@@ -83,6 +75,7 @@ class LeftPanel:
         self._build_connections()
         self._build_temp_profile()
         self._build_lcr_section()
+        self._build_lcr_advanced_section()  # <--- NEW ADVANCED SECTION
         self._build_output_file()
         self._build_profile_buttons()
         self._build_control_buttons()
@@ -164,7 +157,7 @@ class LeftPanel:
                            self.app.test_connections, side="right")
 
     def _build_connections(self):
-        sec = AccordionSection(self.inner, "CONNECTIONS", expanded=True)
+        sec = AccordionSection(self.inner, "CONNECTIONS", expanded=False)
         c = sec.content
         self.cmb_lcr = make_dropdown_row(c, "LCR Address", bg=C_PANEL)
         self.cmb_oven = make_dropdown_row(c, "Oven Port", bg=C_PANEL)
@@ -205,7 +198,6 @@ class LeftPanel:
         self.ent_voltage = make_entry_row(
             c, "AC Voltage (V)", "1.0", bg=C_PANEL)
 
-        # --- NEW: Manual Sweep Button ---
         self.btn_manual = ttk.Button(
             c, text="▶ Run Single Sweep (Manual)", command=self.app.start_manual_sweep)
         self.btn_manual.pack(fill="x", pady=(8, 0), padx=2)
@@ -213,6 +205,77 @@ class LeftPanel:
         self.lbl_stats = tk.Label(
             c, text="", font=F_SMALL, bg=C_PANEL, fg=C_ACCENT)
         self.lbl_stats.pack(anchor="e", pady=(4, 0))
+
+    # --- NEW ADVANCED SETTINGS ACCORDION ---
+    def _build_lcr_advanced_section(self):
+        self._lcr_adv_section = AccordionSection(
+            self.inner, "ADVANCED LCR SETTINGS", expanded=False)
+        c = self._lcr_adv_section.content
+
+        on_off = ["OFF", "ON"]
+        ranges = ["AUTO", "100mΩ", "1Ω", "10Ω", "100Ω",
+                  "1kΩ", "10kΩ", "100kΩ", "1MΩ", "10MΩ", "100MΩ"]
+
+        # Measurement Setup
+        self.cmb_speed = make_dropdown_row(c, "SPEED", bg=C_PANEL)
+        self.cmb_speed['values'] = ["FAST", "MED", "SLOW", "SLOW2"]
+        self.cmb_speed.current(1)
+
+        self.ent_avg = make_entry_row(c, "AVG (OFF or num)", "OFF", bg=C_PANEL)
+        self.ent_delay = make_entry_row(c, "DELAY (s)", "0.0000", bg=C_PANEL)
+
+        self.cmb_range = make_dropdown_row(c, "RANGE", bg=C_PANEL)
+        self.cmb_range['values'] = ranges
+        self.cmb_range.current(0)
+
+        self.cmb_lowz = make_dropdown_row(c, "LOW Z", bg=C_PANEL)
+        self.cmb_lowz['values'] = on_off
+        self.cmb_lowz.current(0)
+
+        self.ent_dcbias = make_entry_row(
+            c, "DCBIAS (OFF or V)", "OFF", bg=C_PANEL)
+
+        make_divider(c, bg=C_PANEL)
+
+        # Hardware & Compensation
+        self.cmb_cable = make_dropdown_row(c, "CABLE", bg=C_PANEL)
+        self.cmb_cable['values'] = ["0m", "1m", "2m", "4m"]
+        self.cmb_cable.current(0)
+
+        self.cmb_open = make_dropdown_row(c, "OPEN Comp", bg=C_PANEL)
+        self.cmb_open['values'] = on_off
+        self.cmb_open.current(0)
+
+        self.cmb_short = make_dropdown_row(c, "SHORT Comp", bg=C_PANEL)
+        self.cmb_short['values'] = on_off
+        self.cmb_short.current(0)
+
+        self.cmb_load = make_dropdown_row(c, "LOAD Comp", bg=C_PANEL)
+        self.cmb_load['values'] = on_off
+        self.cmb_load.current(0)
+
+        make_divider(c, bg=C_PANEL)
+
+        # Trigger & Sorting
+        self.cmb_sync = make_dropdown_row(c, "SYNC", bg=C_PANEL)
+        self.cmb_sync['values'] = on_off
+        self.cmb_sync.current(0)
+
+        self.cmb_jsync = make_dropdown_row(c, "J SYNC", bg=C_PANEL)
+        self.cmb_jsync['values'] = on_off
+        self.cmb_jsync.current(0)
+
+        self.cmb_judge = make_dropdown_row(c, "JUDGE", bg=C_PANEL)
+        self.cmb_judge['values'] = on_off
+        self.cmb_judge.current(0)
+
+        self.cmb_limit = make_dropdown_row(c, "LIMIT", bg=C_PANEL)
+        self.cmb_limit['values'] = on_off
+        self.cmb_limit.current(0)
+
+        self.cmb_scale = make_dropdown_row(c, "SCALE", bg=C_PANEL)
+        self.cmb_scale['values'] = on_off
+        self.cmb_scale.current(0)
 
     def _build_output_file(self):
         sec = AccordionSection(self.inner, "OUTPUT FILE", expanded=True)
@@ -251,10 +314,12 @@ class LeftPanel:
 
     def show_lcr_section(self):
         self._lcr_section.wrapper.pack(fill="x", pady=(6, 0))
+        self._lcr_adv_section.wrapper.pack(fill="x", pady=(6, 0))
         self._on_frame_configure()
 
     def hide_lcr_section(self):
         self._lcr_section.wrapper.pack_forget()
+        self._lcr_adv_section.wrapper.pack_forget()
         self._on_frame_configure()
 
     def show_step_dwell(self):
